@@ -24,6 +24,14 @@ function startCourse(id){
   startDrill((pending.length?pending:course.questions).slice(0,5),course.title,id);
 }
 function startReview(){const ids=reviewQuestions().map(q=>q.id).slice(0,5);if(ids.length)startDrill(ids,'苦手をもう一度');else navigate('stats')}
+function startBeginnerTen(){
+  const latest=latestRecords(),basics=courses[0].questions,rest=questions.map(q=>q.id).filter(id=>!basics.includes(id));
+  const basicPending=basics.filter(id=>!mastered(id)),basicDone=basics.filter(id=>mastered(id));
+  const unseen=rest.filter(id=>!latest.has(id)),seen=rest.filter(id=>latest.has(id)),follow=[...unseen,...seen];
+  const offset=unseen.length?0:records.length%Math.max(follow.length,1);
+  const rotated=[...follow.slice(offset),...follow.slice(0,offset)];
+  startDrill([...basicPending,...basicDone,...rotated].slice(0,10),'初心者10問トレーニング');
+}
 function submitAnswer(){
   if(answered||selected===null)return;
   const q=current();if(!q)return;
@@ -142,55 +150,56 @@ function renderBible(){
 
 function glossary(){return `<details><summary>表・用語の読み方</summary><p class="notice">AA＝Aのペア。AKs＝同じマークのAK、AKo＝異なるマークのAK。22+＝22以上のペア。ATs+＝ATs・AJs・AQs・AKs。BBはブラインドの単位で、この設定では1BB＝200点。BTNは最後に行動しやすいボタンの席。レンジは「持ち得る手札の範囲」です。</p></details>`}
 function recommendation(){const latest=new Map();records.filter(r=>r.level===settings.level).forEach(r=>latest.set(r.id,r));const a=[...latest.values()];if(a.length>=Math.min(4,questions.filter(q=>q.level===settings.level).length)&&a.every(r=>r.correct&&r.hints===0)&&settings.level<5)return {level:settings.level+1,text:'このレベルの異なる問題を自力で正解。ひとつ上に挑戦してみよう。'};if(a.length>=2&&a.filter(r=>!r.correct).length>=2&&settings.level>1)return {level:settings.level-1,text:'ひとつ前を復習すると、今のテーマも考えやすくなります。'};return {level:settings.level,text:records.length?'ヒントを使いながら、同じテーマをもう少し練習しよう。':'まずは相手が参加する手札の範囲から。'};}
-function shell(content){root.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand">♠ RANGE<br>ROOM<span>POKER STUDY CLUB</span></div><nav class="nav" aria-label="メインメニュー">${[['home','特訓コース'],['bible','ヨコサワ表'],['practice','自由練習'],['play','模擬対戦'],['stats','成績・復習'],['settings','設定']].map(([p,t])=>`<button data-nav="${p}" class="${(drill?p==='home':page===p||p==='bible'&&page==='flash'||p==='practice'&&page==='pre')?'active':''}">${t}</button>`).join('')}</nav><footer>YOKOSAWA · 2025<br>学ぶための、あなたの卓。</footer></aside><main><div class="topbar"><span class="desktop-title eyebrow">YOUR PRIVATE POKER ROOM</span><span class="mobile-brand">♠ RANGE ROOM</span><span class="pill">ヨコサワ最新版</span></div>${notice?`<p role="status" class="notice">${notice}</p>`:''}${content}</main></div>`;document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));}
+function shell(content){root.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand">♠ RANGE<br>ROOM<span>BEGINNER POKER TRAINING</span></div><nav class="nav" aria-label="メインメニュー">${[['home','ホーム'],['bible','ヨコサワ表'],['practice','問題を解く'],['stats','復習']].map(([p,t])=>`<button data-nav="${p}" class="${(drill?p==='practice':page===p||p==='bible'&&page==='flash'||p==='practice'&&page==='pre')?'active':''}">${t}</button>`).join('')}</nav><footer>YOKOSAWA · 2025<br>迷わず、すぐ練習。</footer></aside><main><div class="topbar"><span class="desktop-title eyebrow">BEGINNER RANGE TRAINER</span><span class="mobile-brand">♠ RANGE ROOM</span><button class="top-bible-link" data-nav="bible">表を開く</button></div>${notice?`<p role="status" class="notice">${notice}</p>`:''}${content}</main></div>`;document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>navigate(b.dataset.nav));}
 function navigate(p){drill=null;page=p;filter=p==='pre'?'pre':'all';resetQuestion();render();window.scrollTo({top:0})}
 function resetQuestion(){index=0;selected=null;answered=false;hints=0;rangeMode='after'}
 function render(){if(page==='home')return renderHome();if(page==='bible')return renderBible();if(page==='flash')return renderFlash();if(drill?.finished)return renderDrillResult();if(page==='play')return renderPlay();if(page==='stats')return renderStats();if(page==='settings')return renderSettings();renderPractice()}
 
 function renderHome(){
-  const next=courses.find(c=>c.questions.some(id=>!mastered(id)))||courses[0];
   const done=questions.filter(q=>mastered(q.id)).length,weak=reviewQuestions().length;
-  shell('<section class="course-hero"><div><div class="eyebrow">BEGINNER TRAINING</div><h1>読める。選べる。<br>理由がわかる。</h1><p>相手の手札をひとつに決めつけず、<br>あり得る範囲から、次の一手を考えよう。</p><div class="row"><button class="primary" id="start-course">'+(done===questions.length?'もう一周、特訓する':records.length?'続きから特訓する':'はじめての特訓を始める')+' →</button><span class="muted">1回 最大5問・目安3〜5分</span></div></div><div class="course-emblem" aria-hidden="true"><span>♠</span><small>THINK IN RANGES</small></div></section>'+
-    '<div class="stat-grid"><div class="stat"><strong>'+done+' / '+questions.length+'</strong>自力で解けた問題</div><div class="stat"><strong>'+weak+'</strong>もう一度練習する問題</div><div class="stat"><strong>'+records.length+'</strong>積み重ねた回答</div></div>'+
-    '<section class="panel bible-entry"><span class="eyebrow">YOUR PREFLOP BIBLE</span><h2>世界のヨコサワ・最新版が基準。</h2><p>まずは普段遊ぶキャッシュゲーム（アンティなし）から。色と条件を覚え、相手の情報が増えたらレンジを読む練習へ。</p><div class="row"><button class="primary" id="open-bible">ヨコサワ表で確かめる →</button>'+yokosawaLink()+'</div></section>'+learningGuide()+'<section class="thinking-path" aria-label="考える順番"><div><b>01　読む</b><span>位置とアクションから、候補を残す。</span></div><div><b>02　選ぶ</b><span>続ける・降りる・打つ理由を考える。</span></div><div><b>03　振り返る</b><span>結果より、判断の理由を確認する。</span></div></section>'+
-    '<div class="heading"><div><div class="eyebrow">YOUR TRAINING PATH</div><h2>基本から、一段ずつ。</h2></div><span class="muted">どのコースからでも練習できます</span></div>'+
-    '<div class="course-grid">'+courses.map((c,i)=>{const n=c.questions.filter(id=>mastered(id)).length;return '<section class="panel course-card"><div class="row between"><span class="eyebrow">STEP '+String(i+1).padStart(2,'0')+'</span><span class="badge">'+(n===c.questions.length?'自力でクリア':c.id===next.id?'次のおすすめ':c.questions.length+'問')+'</span></div><h3>'+c.title+'</h3><p>'+c.description+'</p><div class="course-rule">'+c.rule+'</div><div class="row between"><small>自力で正解 '+n+' / '+c.questions.length+'</small><small>'+Math.round(n/c.questions.length*100)+'%</small></div><progress value="'+n+'" max="'+c.questions.length+'" aria-label="'+c.title+'の自力正解数"></progress><button data-course="'+c.id+'">'+(n===c.questions.length?'もう一度練習':'このコースを練習')+' →</button></section>'}).join('')+'</div>'+
-    '<section class="panel quick-start"><h2>目的に合わせて練習</h2><div class="row"><button id="quick-review" '+(weak?'':'disabled')+'>苦手を復習（'+weak+'問）</button><button id="quick-pre">プリフロップだけ</button><button id="quick-play">模擬対戦で試す</button></div><p class="notice">各問題の最新回答が「ヒントなしで正解」ならクリア。ヒントを使った問題も、復習で自力正解を目指そう。</p></section>'+
-    '<details><summary>最初に知っておく言葉</summary><div class="panel"><p><b>レンジ</b>：相手が持っていそうな手札の候補全体。</p><p><b>フォールド</b>：この勝負から降りる。<b>チェック</b>：追加で払わず順番を渡す。</p><p><b>コール</b>：相手の賭け額に合わせる。<b>ベット</b>：その周で最初に賭ける。<b>レイズ</b>：賭け額を上げる。</p><p><b>フロップ／ターン／リバー</b>：共通カードが3枚／4枚／5枚開いた段階。</p><p><b>BB</b>：大きい方の強制ベットの単位。100BBはその100倍の持ち点です。</p><p class="notice">プリフロップはヨコサワ最新版が基準。人数・アンティは各問題で確認。ボードや相手の行動については問題ごとに仮定を置きます。</p></div></details>');
-  $('#open-bible').onclick=()=>navigate('bible');
-  $('#start-course').onclick=()=>startCourse(next.id);
+  shell('<section class="simple-hero"><span class="eyebrow">はじめてのレンジ練習</span><h1>表を見る。問題を解く。<br>理由を覚える。</h1><p>まずはキャッシュゲームの基本から。迷ったら、いつでもヨコサワ表に戻れます。</p></section>'+
+    '<div class="home-actions"><section class="panel home-action bible"><span class="home-action-number">01</span><h2>ヨコサワ表をすぐ見る</h2><p>ポジションと手札を選ぶだけ。基本の行動がすぐ分かります。</p><button class="primary" id="open-bible">表を開く →</button></section>'+
+    '<section class="panel home-action quiz"><span class="home-action-number">02</span><h2>まず10問解く</h2><p>ポジションと周りの動きを見て判断。答えた直後に理由を確認できます。</p><button class="primary" id="start-ten">10問トレーニング →</button></section></div>'+
+    '<div class="simple-stats"><span><b>'+records.length+'</b> 回答</span><span><b>'+done+'</b> / '+questions.length+' 習得</span><button id="quick-review" '+(weak?'':'disabled')+'>間違えた問題を復習 '+weak+'問</button></div>'+
+    '<details class="more-training"><summary>コースを選んで練習</summary><div class="course-grid">'+courses.map((c,i)=>{const n=c.questions.filter(id=>mastered(id)).length;return '<section class="panel course-card"><span class="eyebrow">STEP '+(i+1)+'</span><h3>'+c.title+'</h3><p>'+c.description+'</p><progress value="'+n+'" max="'+c.questions.length+'" aria-label="'+c.title+'の自力正解数"></progress><button data-course="'+c.id+'">'+c.questions.length+'問を練習</button></section>'}).join('')+'</div></details>'+
+    '<details class="more-training"><summary>模擬対戦・設定・用語</summary><section class="panel compact-menu"><button id="quick-play">模擬対戦</button><button id="open-settings">設定</button><p><b>レンジ</b>：相手が持っていそうな手札の候補全体。<b>BB</b>：大きい方の強制ベットの単位です。</p></section></details>');
+  $('#open-bible').onclick=()=>navigate('bible');$('#start-ten').onclick=startBeginnerTen;
+  $('#quick-review').onclick=startReview;$('#quick-play').onclick=()=>navigate('play');$('#open-settings').onclick=()=>navigate('settings');
   document.querySelectorAll('[data-course]').forEach(b=>b.onclick=()=>startCourse(b.dataset.course));
-  $('#quick-review').onclick=startReview;$('#quick-pre').onclick=()=>navigate('pre');$('#quick-play').onclick=()=>navigate('play');
 }
 function renderDrillResult(){
   const d=drill,solo=d.results.filter(r=>r.correct&&!r.hints).length;
   const retry=d.results.filter(r=>!r.correct||r.hints).map(r=>r.id);
-  shell('<div class="eyebrow">SESSION COMPLETE</div><h1>おつかれさま。読みを積み重ねた。</h1><p class="muted">'+d.title+'</p><section class="panel session-summary"><strong>'+solo+' / '+d.ids.length+'</strong><h2>ヒントなしで正解</h2><p>'+(retry.length?'まだ迷う問題を、もう一度。理由を思い出せれば一歩前進です。':'すべて自力で正解。次のテーマでも、同じ順番で考えてみよう。')+'</p><div class="row">'+(retry.length?'<button class="primary" id="retry-drill">迷った'+retry.length+'問をやり直す</button>':'')+'<button id="course-home">コース一覧へ</button></div></section>'+
-  '<section class="panel"><h2>今回の振り返り</h2>'+d.results.map(r=>{const q=questions.find(q=>q.id===r.id);return '<details><summary>'+(r.correct?(r.hints?'ヒントで正解':'✓ 自力で正解'):'もう一度')+' · '+q.title+'</summary><p>あなたの回答：'+q.options[r.choice]+'</p><p><b>教材の答え：'+q.options[q.answer]+'</b></p>'+learningFeedback(q)+'</details>'}).join('')+'</section>');
+  shell('<div class="eyebrow">10問完了</div><h1>おつかれさま！</h1><p class="muted">'+d.title+'</p><section class="panel session-summary"><strong>'+solo+' / '+d.ids.length+'</strong><h2>ヒントなしで正解</h2><p>'+(retry.length?'間違えた問題は、理由を確認してもう一度。':'すべて自力で正解できました。')+'</p><div class="row">'+(retry.length?'<button class="primary" id="retry-drill">間違えた'+retry.length+'問をやり直す</button>':'')+(d.title.includes('初心者10問')?'<button id="more-ten">さらに10問解く</button>':'')+'<button id="course-home">ホームへ</button></div></section>'+
+  '<details class="more-training"><summary>今回の答えを一覧で見る</summary><section class="panel">'+d.results.map(r=>{const q=questions.find(q=>q.id===r.id);return '<details><summary>'+(r.correct?(r.hints?'ヒントで正解':'✓ 自力で正解'):'もう一度')+' · '+q.title+'</summary><p>あなたの回答：'+q.options[r.choice]+'</p><p><b>教材の答え：'+q.options[q.answer]+'</b></p>'+learningFeedback(q)+'</details>'}).join('')+'</section></details>');
   if($('#retry-drill'))$('#retry-drill').onclick=()=>startDrill(retry,d.title,d.courseId);
+  if($('#more-ten'))$('#more-ten').onclick=startBeginnerTen;
   $('#course-home').onclick=()=>navigate('home');
 }
 function renderPractice(){
   const q=current();
-  if(!q){shell('<h1>復習する問題はありません</h1><p>最新の回答で間違えた問題と、ヒントを使った問題をここで見直せます。</p><button id="back">コースへ</button>');$('#back').onclick=()=>navigate('home');return}
-  const course=drill?.courseId?courses.find(c=>c.id===drill.courseId):null;
-  shell('<div class="heading"><div><div class="eyebrow">'+(drill?'GUIDED TRAINING':'RANGE TRAINER')+'</div><h1>'+(drill?drill.title:page==='pre'?'参加する手札を考える':'見えない手札を、読む。')+'</h1><p>'+(course?course.rule:'位置 → 候補の手札 → 行動の理由。この順番で考えよう。')+'</p></div><span class="pill">教材局面 · '+(q.positions?.length||6)+'人卓 · アンティ'+(q.ante?'あり':'なし')+'</span></div>'+
-    (drill?'<div class="session-progress"><span>今回の特訓　'+(index+1)+' / '+list().length+'問</span><progress value="'+drill.results.length+'" max="'+list().length+'" aria-label="今回の特訓の回答数"></progress><button id="exit-drill" class="ghost">コース一覧へ</button></div>':
-    page!=='pre'?'<div class="row"><button id="board-focus" class="'+(filter==='board'?'primary':'ghost')+'">ボード判断に集中</button><button id="all-focus" class="'+(filter==='all'?'primary':'ghost')+'">レベル別に練習</button><button id="pre-focus" class="ghost">プリフロップ</button></div>'+
-    (filter!=='board'?'<div class="levelbar" aria-label="難易度">'+levelNames.map((n,i)=>'<button data-level="'+(i+1)+'" class="'+(settings.level===i+1?'active':'')+'" title="'+n+'">Lv.'+(i+1)+'</button>').join('')+'<span class="pill">'+levelNames[settings.level-1]+'</span></div>':''):'')+
-    '<div class="workspace"><section class="panel"><div class="row between"><span class="eyebrow">'+q.title+'</span><span class="badge">'+q.view+'</span></div>'+table(q)+
-    '<div class="history">'+q.history.map((h,i)=>'<div><b>'+String(i+1).padStart(2,'0')+'</b>　'+h+'</div>').join('')+'</div>'+
-    (q.board.length?boardChecklist(q.board):'')+glossary()+'</section><section class="panel"><div class="row between"><span class="eyebrow">'+(q.learningKind==='memory'?'基準の確認':q.learningKind==='read'?'レンジの読み':'あなたの判断')+'</span><small>'+(index%list().length+1)+' / '+list().length+'</small></div>'+learningIntro(q)+'<h2 class="question">'+q.ask+'</h2>'+
+  if(!q){shell('<h1>復習する問題はありません</h1><p>間違えた問題は、ここに自動で集まります。</p><button id="back">ホームへ</button>');$('#back').onclick=()=>navigate('home');return}
+  const hero=q.hero||(q.id==='mirror'?'BTN':q.id==='multi'?'SB':'BB'),hand=q.hand?handNotation(q.hand):'手札なし';
+  shell('<div class="practice-head"><div><span class="eyebrow">'+(drill?drill.title:'問題トレーニング')+'</span><h1>'+q.title+'</h1></div><button id="practice-bible">ヨコサワ表を見る</button></div>'+
+    (drill?'<div class="session-progress"><span>今回の特訓　'+(index+1)+' / '+list().length+'問</span><progress value="'+drill.results.length+'" max="'+list().length+'" aria-label="今回の特訓の回答数"></progress><button id="exit-drill" class="ghost">ホームへ</button></div>':
+    page!=='pre'?'<details class="practice-filter"><summary>問題の種類を変える</summary><div class="row"><button id="board-focus" class="'+(filter==='board'?'primary':'ghost')+'">ボード判断</button><button id="all-focus" class="'+(filter==='all'?'primary':'ghost')+'">レベル別</button><button id="pre-focus" class="ghost">プリフロップ</button></div>'+
+    (filter!=='board'?'<div class="levelbar" aria-label="難易度">'+levelNames.map((n,i)=>'<button data-level="'+(i+1)+'" class="'+(settings.level===i+1?'active':'')+'" title="'+n+'">Lv.'+(i+1)+'</button>').join('')+'<span class="pill">'+levelNames[settings.level-1]+'</span></div>':'')+'</details>':'')+
+    '<div class="situation-strip" aria-label="今の状況"><div><small>あなたの位置</small><b>'+hero+'</b></div><div><small>あなたの手札</small><b>'+hand+'</b></div><div><small>ゲーム</small><b>'+(q.ante?'アンティあり':'キャッシュ · アンティなし')+'</b></div></div>'+
+    '<div class="workspace beginner-workspace"><section class="panel situation-panel">'+table(q)+
+    '<h2 class="section-label">周りのアクション</h2><div class="action-timeline">'+q.history.map(h=>'<div>'+h+'</div>').join('')+'</div>'+
+    (q.board.length?'<details><summary>ボードの見方を確認</summary>'+boardChecklist(q.board)+'</details>':'')+'</section><section class="panel answer-panel"><div class="row between"><span class="learning-badge">'+learningKinds[q.learningKind].title+'</span><small>'+(index%list().length+1)+' / '+list().length+'</small></div><h2 class="question">'+q.ask+'</h2>'+
     '<div>'+q.options.map((o,i)=>'<button class="option '+(selected===i?'selected ':'')+(answered&&i===q.answer?'correct ':'')+(answered&&selected===i&&i!==q.answer?'wrong':'')+'" data-choice="'+i+'" aria-pressed="'+(selected===i)+'" '+(answered?'disabled':'')+'><span class="letter">'+(answered&&i===q.answer?'✓':String.fromCharCode(65+i))+'</span><span>'+o+'</span></button>').join('')+'</div>'+
     (hints?'<div class="hint" role="status">ヒント '+hints+'/3：'+q.hints[hints-1]+'</div>':'')+
-    (!answered?'<div class="actions"><button id="hint" '+(hints>=3?'disabled':'')+'>ヒント '+hints+'/3</button><button class="primary" id="answer" '+(selected===null?'disabled':'')+'>回答する</button></div>':
-    '<div class="feedback" aria-live="polite"><h3>'+(selected===q.answer?'✓ その考え方です':'判断の理由を確認しよう')+'</h3>'+
-    (q.traps&&selected!==q.answer?'<div class="hint">'+q.traps[selected]+'</div>':'')+learningFeedback(q)+
-    (q.takeaway?'<div class="takeaway"><b>持ち帰る定石</b><p>'+q.takeaway+'</p></div>':'')+explainSteps(q)+
+    (!answered?'<div class="actions"><button id="hint" '+(hints>=3?'disabled':'')+'>ヒント '+hints+'/3</button><button class="primary" id="answer" '+(selected===null?'disabled':'')+'>答えを見る</button></div>':
+    '<div class="feedback '+(selected===q.answer?'feedback-correct':'feedback-wrong')+'" aria-live="polite"><span class="result-label">'+(selected===q.answer?'✓ 正解':'× ここを直そう')+'</span><h3>正解：'+q.options[q.answer]+'</h3>'+
+    (selected!==q.answer?'<div class="mistake-reason"><b>なぜ違った？</b><p>'+(q.traps?.[selected]||q.hints.at(-1))+'</p></div>':'')+
+    '<div class="quick-why"><b>なぜこの答え？</b><p>'+q.why+'</p></div>'+
+    (q.takeaway?'<div class="takeaway"><b>これだけ覚える</b><p>'+q.takeaway+'</p></div>':'')+
+    '<details><summary>詳しい解説と表を見る</summary>'+learningFeedback(q)+explainSteps(q)+
     (q.range?'<details><summary>'+(q.range==='call'?'アクション前後のレンジ':q.range==='river'?'具体的なカードの候補':'プリフロップの出発点を見る')+'</summary>'+
     (q.range==='call'?'<div class="row"><button id="before">コール前</button><button id="after">コール後</button><span class="badge">'+(rangeMode==='before'?'コール前':'コール後')+'</span></div>':'')+grid(q.range==='call'&&rangeMode==='before'?'bb':q.range)+'</details>':'')+
-    '<div class="actions"><button class="primary" id="next">'+(drill&&index+1===list().length?'今回の結果を見る':'次の問題へ')+'</button></div></div>')+
-    '<p class="notice">標準戦略を仮定した教材です。唯一のGTO解を示すものではありません。</p></section></div>');
+    '</details><div class="actions"><button class="primary" id="next">'+(drill&&index+1===list().length?'結果を見る':'次の問題へ →')+'</button></div></div>')+'</section></div>');
+  $('#practice-bible').onclick=()=>navigate('bible');
   if($('#exit-drill'))$('#exit-drill').onclick=()=>navigate('home');
   if($('#board-focus'))$('#board-focus').onclick=()=>{filter='board';resetQuestion();render()};
   if($('#all-focus'))$('#all-focus').onclick=()=>{filter='all';resetQuestion();render()};

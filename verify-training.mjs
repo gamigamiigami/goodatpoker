@@ -29,7 +29,8 @@ const h=harness();
 
 h.run(`
 assert.equal(page,'home');render();
-assert(root.innerHTML.includes('はじめての特訓を始める'));
+assert(root.innerHTML.includes('まず10問解く'));
+startBeginnerTen();assert.equal(drill.ids.length,10);assert.equal(drill.ids[0],'hero_utg');navigate('home');
 assert.equal(questions.length,30);
 const courseIds=courses.flatMap(c=>c.questions);
 assert.equal(new Set(courseIds).size,questions.length);
@@ -55,8 +56,8 @@ for(let i=0;i<5;i++){
   nextQuestion();
 }
 assert(drill.finished);assert.equal(drill.results.length,5);
-assert(root.innerHTML.includes('SESSION COMPLETE'));
-assert(root.innerHTML.includes('迷った2問をやり直す'));
+assert(root.innerHTML.includes('おつかれさま！'));
+assert(root.innerHTML.includes('間違えた2問をやり直す'));
 assert.equal(reviewQuestions().length,2);
 const oldIds=drill.results.filter(r=>!r.correct||r.hints).map(r=>r.id);
 $('#retry-drill').onclick();
@@ -70,7 +71,7 @@ for(let i=0;i<2;i++){
   nextQuestion();
 }
 assert(drill.finished);assert.equal(reviewQuestions().length,0);
-navigate('home');assert(root.innerHTML.includes('自力でクリア'));
+navigate('home');assert(root.innerHTML.includes('<b>5</b> / 30 習得'));
 startCourse('board');assert.equal(drill.ids.length,5);
 for(let i=0;i<5;i++){selected=current().answer;submitAnswer();nextQuestion()}
 startCourse('board');
@@ -85,14 +86,14 @@ navigate('settings');assert(root.innerHTML.includes('ROOM SETTINGS'));
 navigate('stats');assert(root.innerHTML.includes('YOUR PROGRESS'));
 startReview();assert.equal(page,'stats','empty review stays on stats');
 startDrill(['premium'],'誤答の説明');selected=0;submitAnswer();
-assert(root.innerHTML.includes(current().traps[0]));assert(root.innerHTML.includes('持ち帰る定石'));
+assert(root.innerHTML.includes(current().traps[0]));assert(root.innerHTML.includes('これだけ覚える'));
 navigate('home');startDrill(['premium'],'再確認');selected=current().answer;submitAnswer();
 assert(mastered('premium'));
 navigate('home');startDrill(['premium'],'失敗したら復習に戻す');selected=0;submitAnswer();
 assert(!mastered('premium'));assert(reviewQuestions().some(q=>q.id==='premium'));
 `);
 const reload=harness(h.storage.value);
-reload.run("assert.equal(page,'home');assert(!mastered('premium'));assert(mastered('hero_utg'));render();assert(root.innerHTML.includes('続きから特訓する'))");
+reload.run("assert.equal(page,'home');assert(!mastered('premium'));assert(mastered('hero_utg'));render();assert(root.innerHTML.includes('まず10問解く'))");
 for(const stored of ["null","{broken","[]","{\"settings\":{\"level\":99,\"players\":0},\"records\":[{\"id\":\"missing\",\"correct\":true,\"hints\":0}]}"]){harness(stored).run("render();assert.equal(settings.players,6);assert.equal(settings.level,1);assert.equal(records.length,0)")}
 harness(null,true).run("startCourse('entry');selected=current().answer;submitAnswer();assert.equal(records.length,1);assert(notice.includes('保存できません'));assert(root.innerHTML.includes('保存できません'));nextQuestion();assert.equal(index,1)");
 console.log('PASS: course coverage, card validity, guided completion, answer guard, stable review queue, mastery, retries, continuation, saved progress, navigation, malformed storage, unavailable storage');
