@@ -167,6 +167,8 @@ assert.equal(courses[0].id,'entry');
 assert(courses[0].rule.includes('アンティなし'));
 assert.equal(bibleState.ante,false);
 navigate('bible');assert(root.innerHTML.includes('K9s（緑） → レイズ'));
+document.querySelector('#bible-drill').onclick();assert.equal(drill.courseId,'entry');
+navigate('bible');
 bibleState.ante=false;renderBible();assert(root.innerHTML.includes('下限は白'));
 bibleState.spot='response';bibleState.openerBehind=3;bibleState.ante=true;bibleState.hand='Q9s';renderBible();assert(root.innerHTML.includes('Q9s（水色） → コール'));
 bibleState.spot='bb';bibleState.openerBehind=2;bibleState.hand='87o';renderBible();assert(root.innerHTML.includes('87o（ピンク） → コール'));

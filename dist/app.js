@@ -136,7 +136,7 @@ function renderBible(){
   $('#bible-spot').onchange=e=>{b.spot=e.target.value;if(b.spot==='response'&&b.openerBehind===2)b.openerBehind=3;renderBible()};
   $('#bible-behind').onchange=e=>{b[b.spot==='open'?'behind':'openerBehind']=+e.target.value;renderBible()};
   $('#bible-hand').onchange=e=>{b.hand=e.target.value;renderBible()};
-  $('#bible-drill').onclick=()=>startCourse('yokosawa');
+  $('#bible-drill').onclick=()=>startCourse(b.ante?'yokosawa':'entry');
   $('#bible-flash').onclick=startFlash;
 }
 
