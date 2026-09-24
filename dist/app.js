@@ -79,6 +79,68 @@ function learningFeedback(q){
     (q.source==='yokosawa'?'<p class="notice">基準：ヨコサワ2025年最新版・アンティ'+(q.ante?'あり':'なし')+'。'+yokosawaLink(q.ante?163:1644)+'</p><details><summary>最新版の色を表で確かめる</summary>'+yokoGrid(q.ante,null,q.hand?handNotation(q.hand):'')+'</details>':'<p class="notice">ここからは一般的な考え方を使う本アプリの教材です。相手の継続範囲や頻度は問題の仮定で、ヨコサワ表の指定ではありません。</p>')+
     (q.id==='hero_btn'?'<details open class="chart-explainer"><summary>勝率表で決まる？ 暗記する？</summary><p><b>覚える基準：</b>K9sは緑。アンティなしのBTNは白以上。色と条件を対応させてレイズを選びます。</p><p><b>なぜ位置が関係する？</b>後ろに相手が少なく、フロップ以降も相手を見てから動けるためです。ただし、この理由だけで参加範囲の正確な境界までは導けません。</p><p><b>勝率と参加表は別：</b>勝率は指定した相手の範囲に対して勝つ割合。レイズの損得には相手が降りる可能性や、その後の支払いも関係します。このアプリはその計算をしていません。公式の入門用の参加基準を採用しています。</p><p><b>読む部分：</b>相手が参加したら、位置・コールかリレイズか・ボードから候補を更新します。参加表はその出発点です。</p></details>':'');
 }
+function friendlyWords(text){
+  return text
+    .replace('レンジ','持っていそうな手札の候補（レンジ）')
+    .replace('スーテッド','同じマークの手（スーテッド）')
+    .replace('オフスート','違うマークの手（オフスート）')
+    .replace('リレイズ','相手のレイズに、さらにレイズ（リレイズ）')
+    .replace('セット','手札のペアから作るスリーカード（セット）')
+    .replace('ドロー','あと1枚で強い役になる手（ドロー）');
+}
+function rangeStory(q){
+  const history=q.history.join(' '),position=q.hero||(q.id==='mirror'?'BTN':q.id==='multi'?'SB':'BB');
+  if(q.source==='yokosawa'&&(/全員フォールド|参加者なし|未参加/.test(history))&&!/が2\.5BBにレイズ/.test(history))return {
+    focus:'自分が最初に参加するときの手札候補',
+    start:'まだ誰も参加していないので、まず「この位置から参加してよい手」を表で探します。',
+    change:'後ろに残る人数とアンティの有無で、参加できる色の下限が変わります。手札の色が下限に届かなければ候補から外します。',
+    because:'後ろの人数が多いほど、誰かに強い手を持たれている可能性が上がるためです。'
+  };
+  if(q.source==='yokosawa')return {
+    focus:'先にレイズした相手の手札候補と、それに対する自分の手札',
+    start:'相手が最初にレイズした位置から、相手が参加しそうな色の範囲を置きます。相手の手札を1つに決めません。',
+    change:'レイズしたことで、最初から降りる弱い手は候補から減りました。自分は相手の参加下限と、自分の色の差を比べます。',
+    because:'同じレイズでも強い手だけでなく、その位置から参加できる複数の手で行うからです。'
+  };
+  if(q.range==='call')return {
+    focus:'BBがコールしたあとに残る手札候補',
+    start:'BBはプリフロップでコールしたので、中小ペア・同じマークの連続した手・一部のAなどが候補です。',
+    change:'フロップでもコールすると、何も役がなく今後も強くなりにくい手は減ります。ペア、強くなる可能性のある手、一部の強い手が残ります。',
+    because:'追加のお金を払うには、今勝っているか、次のカードで強くなる見込みが必要だからです。'
+  };
+  if(q.range==='river')return {
+    focus:'リバーまで大きくベットし続けた相手の手札候補',
+    start:'最初の参加位置から、相手が持ち得る手を広く置きます。',
+    change:'大きなベットを3回続けたため、中くらいの強さの手は減り、とても強い完成ハンドと一部のブラフが中心になります。',
+    because:'中くらいの手は、弱い手に降りられ、強い手にだけコールされやすいので、何度も大きく打ちにくいからです。'
+  };
+  if(q.range==='bb')return {
+    focus:'BBがプリフロップでコールしたあとに残る手札候補',
+    start:'BBはすでに1BBを払っているので、追加額が小さく、ほかの位置より広い手でコールできます。',
+    change:history.includes('コール')?'その後のコールで、完全に弱い手は減り、ペア・つながった手・強くなる可能性のある手が残ります。':'強いAA・KK・AKなどをリレイズに回す設定なら、それらはコール側から少し減ります。',
+    because:'同じ「参加」でも、コールとリレイズでは使う手札のグループが違うからです。'
+  };
+  if(q.range==='utg')return {
+    focus:'早い位置から参加するプレイヤーの手札候補',
+    start:'早い位置では後ろに多くの相手が残るため、強めの手から参加します。',
+    change:'レイズした時点で、表の参加下限より弱い手は候補から大きく減ります。',
+    because:'後ろの誰かがさらに強い手を持つ可能性が、遅い位置より高いからです。'
+  };
+  if(q.range==='btn')return {
+    focus:(position==='BTN'?'BTN':'レイズした側')+'が持っていそうな手札候補',
+    start:'BTNは後ろにSBとBBしかいないため、強い手に加えて弱めの同じマークの手でも参加できます。',
+    change:history.includes('ベット')?'ボードが出てベットしたあとも、強い手だけでなく、同じ小さな額を使う弱い手が残ります。':'レイズしたことで、参加表の外にある弱い手は候補から減ります。',
+    because:'BTNは後ろの人数が少なく、フロップ以降も相手の行動を見てから動きやすい位置だからです。'
+  };
+  return {
+    focus:q.view==='自分の行動'?'相手が持っていそうな手札候補':'この問題文で指定された相手の手札候補',
+    start:'まず位置と、それまでの行動から、相手が最初に持ち得た手を広く考えます。',
+    change:'新しいベットやコールがあるたびに、その行動を取りにくい手を減らします。候補をいきなり1つにはしません。',
+    because:'同じ行動を取る手札は複数あり、強い手も弱い手も混ざることがあるからです。'
+  };
+}
+function rangePrimer(q){const s=rangeStory(q);return '<section class="range-primer"><span>この問題で見るレンジ</span><b>'+s.focus+'</b><small>レンジ＝その人が持っていそうな手札の候補全部</small></section>'}
+function rangeWalkthrough(q){const s=rangeStory(q);return '<section class="range-walkthrough"><h3>レンジはどう変わった？</h3><div><b>① 最初の候補</b><p>'+s.start+'</p></div><div><b>② 行動のあと</b><p>'+s.change+'</p></div><div><b>③ なぜそう言える？</b><p>'+s.because+'</p></div></section>'}
 function learningGuide(){
   return '<section class="panel learning-guide"><h2>覚えることと、読むことを分けよう。</h2><div class="learning-guide-grid">'+Object.values(learningKinds).map(k=>'<div><span class="learning-badge">'+k.title+'</span><p>'+k.description+'</p></div>').join('')+'</div><p class="notice">基準は理由とセットで覚える。相手の手札は、位置・アクション・ボードから候補を更新する。各問題で、どちらを練習するかを表示します。</p></section>';
 }
@@ -91,6 +153,15 @@ function yokoGrid(ante=true,minimum=null,selectedHand=''){
     const h=i===j?a+b:i<j?a+b+'s':b+a+'o',tier=yokosawaRank(h,ante);
     return '<span class="range-cell yoko-tier-'+tier+(minimum!==null&&tier<minimum?' outside':'')+(h===selectedHand?' selected-hand':'')+'" title="'+h+'：'+yokosawaColors[tier]+(minimum!==null?'・'+(tier>=minimum?'オープン対象':'フォールド'):'')+'">'+h+'</span>';
   })).join('')+'</div></div><div class="yoko-legend">'+yokosawaColors.map((name,tier)=>!ante&&tier===1?'':'<span><i class="yoko-tier-'+tier+'"></i>'+tier+' '+name+'</span>').join('')+'</div>';
+}
+function openChartOverlay(ante=false,hand=''){
+  const old=document.querySelector('#chart-overlay-host');if(old)old.remove();
+  const host=document.createElement('div');host.id='chart-overlay-host';
+  host.innerHTML='<div class="chart-overlay" role="dialog" aria-modal="true" aria-labelledby="chart-overlay-title"><div class="chart-overlay-card"><div class="row between"><div><span class="eyebrow">プレイを止めずに確認</span><h2 id="chart-overlay-title">ヨコサワ表</h2></div><button id="chart-overlay-close" aria-label="表を閉じる">閉じる ×</button></div><p class="notice">練習中の状態はそのまま残ります。右上は同じマーク（s）、左下は違うマーク（o）、対角線はペアです。</p><div class="chart-overlay-tabs"><button data-overlay-ante="no" class="'+(!ante?'primary':'')+'">キャッシュ・アンティなし</button><button data-overlay-ante="yes" class="'+(ante?'primary':'')+'">アンティあり</button></div>'+yokoGrid(ante,null,hand)+'<p class="notice">'+(hand?hand+'を白枠で表示しています。':'')+'色は勝率ではなく、参加基準の段階です。</p></div></div>';
+  document.body.appendChild(host);
+  host.querySelector('#chart-overlay-close').onclick=()=>host.remove();
+  host.querySelector('.chart-overlay').onclick=e=>{if(e.target===e.currentTarget)host.remove()};
+  host.querySelectorAll('[data-overlay-ante]').forEach(button=>button.onclick=()=>{host.remove();openChartOverlay(button.dataset.overlayAnte==='yes',hand)});
 }
 let bibleState={ante:false,behind:2,hand:'K9s',spot:'open',openerBehind:3};
 let flash=null;
@@ -187,19 +258,19 @@ function renderPractice(){
     '<div class="situation-strip" aria-label="今の状況"><div><small>あなたの位置</small><b>'+hero+'</b></div><div><small>あなたの手札</small><b>'+hand+'</b></div><div><small>ゲーム</small><b>'+(q.ante?'アンティあり':'キャッシュ · アンティなし')+'</b></div></div>'+
     '<div class="workspace beginner-workspace"><section class="panel situation-panel">'+table(q)+
     '<h2 class="section-label">周りのアクション</h2><div class="action-timeline">'+q.history.map(h=>'<div>'+h+'</div>').join('')+'</div>'+
-    (q.board.length?'<details><summary>ボードの見方を確認</summary>'+boardChecklist(q.board)+'</details>':'')+'</section><section class="panel answer-panel"><div class="row between"><span class="learning-badge">'+learningKinds[q.learningKind].title+'</span><small>'+(index%list().length+1)+' / '+list().length+'</small></div><h2 class="question">'+q.ask+'</h2>'+
+    (q.board.length?'<details><summary>ボードの見方を確認</summary>'+boardChecklist(q.board)+'</details>':'')+'</section><section class="panel answer-panel"><div class="row between"><span class="learning-badge">'+learningKinds[q.learningKind].title+'</span><small>'+(index%list().length+1)+' / '+list().length+'</small></div>'+rangePrimer(q)+'<h2 class="question">'+q.ask+'</h2>'+
     '<div>'+q.options.map((o,i)=>'<button class="option '+(selected===i?'selected ':'')+(answered&&i===q.answer?'correct ':'')+(answered&&selected===i&&i!==q.answer?'wrong':'')+'" data-choice="'+i+'" aria-pressed="'+(selected===i)+'" '+(answered?'disabled':'')+'><span class="letter">'+(answered&&i===q.answer?'✓':String.fromCharCode(65+i))+'</span><span>'+o+'</span></button>').join('')+'</div>'+
     (hints?'<div class="hint" role="status">ヒント '+hints+'/3：'+q.hints[hints-1]+'</div>':'')+
     (!answered?'<div class="actions"><button id="hint" '+(hints>=3?'disabled':'')+'>ヒント '+hints+'/3</button><button class="primary" id="answer" '+(selected===null?'disabled':'')+'>答えを見る</button></div>':
     '<div class="feedback '+(selected===q.answer?'feedback-correct':'feedback-wrong')+'" aria-live="polite"><span class="result-label">'+(selected===q.answer?'✓ 正解':'× ここを直そう')+'</span><h3>正解：'+q.options[q.answer]+'</h3>'+
     (selected!==q.answer?'<div class="mistake-reason"><b>なぜ違った？</b><p>'+(q.traps?.[selected]||q.hints.at(-1))+'</p></div>':'')+
-    '<div class="quick-why"><b>なぜこの答え？</b><p>'+q.why+'</p></div>'+
+    rangeWalkthrough(q)+'<div class="quick-why"><b>④ 今回の判断</b><p>'+friendlyWords(q.why)+'</p></div>'+
     (q.takeaway?'<div class="takeaway"><b>これだけ覚える</b><p>'+q.takeaway+'</p></div>':'')+
     '<details><summary>詳しい解説と表を見る</summary>'+learningFeedback(q)+explainSteps(q)+
     (q.range?'<details><summary>'+(q.range==='call'?'アクション前後のレンジ':q.range==='river'?'具体的なカードの候補':'プリフロップの出発点を見る')+'</summary>'+
     (q.range==='call'?'<div class="row"><button id="before">コール前</button><button id="after">コール後</button><span class="badge">'+(rangeMode==='before'?'コール前':'コール後')+'</span></div>':'')+grid(q.range==='call'&&rangeMode==='before'?'bb':q.range)+'</details>':'')+
     '</details><div class="actions"><button class="primary" id="next">'+(drill&&index+1===list().length?'結果を見る':'次の問題へ →')+'</button></div></div>')+'</section></div>');
-  $('#practice-bible').onclick=()=>navigate('bible');
+  $('#practice-bible').onclick=()=>openChartOverlay(q.ante,q.hand?handNotation(q.hand):'');
   if($('#exit-drill'))$('#exit-drill').onclick=()=>navigate('home');
   if($('#board-focus'))$('#board-focus').onclick=()=>{filter='board';resetQuestion();render()};
   if($('#all-focus'))$('#all-focus').onclick=()=>{filter='all';resetQuestion();render()};
@@ -241,7 +312,16 @@ function preflopBaseline(p){
 }
 
 function runBots(){const s=session;let guard=0;while(!s.done&&guard++<300){if(s.players.filter(p=>!p.fold).length===1){refundUncalled();settle();break}for(const i of s.pending)if(s.players[i].fold||s.players[i].stack===0)s.pending.delete(i);if(!s.pending.size){nextStreet();continue}if(s.players.filter(p=>!p.fold&&p.stack>0).length<=1&&s.players.filter(p=>!p.fold&&p.stack>0).every(p=>p.bet>=s.current)){s.pending.clear();continue}if(!s.pending.has(s.turn)){s.turn=(s.turn+1)%s.players.length;continue}const p=s.players[s.turn];if(p.hero)break;const cost=s.current-p.bet,st=strength(p),late=['BTN','CO','SB'].includes(p.pos);let choice='call';const baseline=s.street===0?preflopBaseline(p):null;if(baseline)choice=baseline;else if(s.street===0&&s.current===1&&p.pos!=='BB'){const threshold=late?.53:.60+(s.players.length-6)*.012;choice=st>=threshold?'raise':'fold'}else if(cost>0&&st<(s.street===0?(late?.51:.60):.28)&&Math.random()>.22)choice='fold';else if(st>.7&&Math.random()<.25&&s.current<15)choice='raise';act(s.turn,choice)}if(guard>=300){notice='ハンドを進行できませんでした。新しいハンドを開始してください。';s.done=true;s.result='進行を停止しました';}}
-function renderPlay(){if(!session)newHand();const s=session,hero=s.players.find(p=>p.hero),cost=Math.min(hero.stack,Math.max(0,s.current-hero.bet));shell(`<div class="heading"><div><div class="eyebrow">PRACTICE TABLE</div><h1>一手ずつ、考える。</h1><p>${s.players.length}人卓 · ${s.mode==='learn'?'ヒント付き学習':'実戦モード'} · ローカル対戦</p></div><span class="pill">${['プリフロップ','フロップ','ターン','リバー'][s.street]}</span></div><div class="workspace"><section class="panel"><div class="row between"><span>ポット <b>${money(s.pot)}</b></span><span>持ち点 ${money(hero.stack)}</span></div>${table({hero:hero.pos,board:s.board,hand:hero.hand,positions:s.players.map(p=>p.pos),active:s.players.filter(p=>!p.fold).map(p=>p.pos)},'ポット '+money(s.pot))}<div class="row">${s.players.map(p=>`<span class="pill">${p.pos}${p.hero?' / YOU':''} · ${p.fold?'fold':money(p.stack)}</span>`).join('')}</div><details open><summary>アクション履歴</summary><div class="history">${s.log.map(l=>`<div>${l}</div>`).join('')}</div></details></section><section class="panel">${s.lastFeedback&&!s.done&&s.mode==='learn'?`<div class="reviewline"><b>前の選択の振り返り</b><br>${s.lastFeedback}</div>`:''}${s.done?`<div class="eyebrow">HAND REVIEW</div><h2>${s.result}</h2><p>あなたの増減：${money(hero.stack-100)}</p>${s.players.filter(p=>!p.fold).map(p=>`<div class="list-item"><span>${p.pos} ${p.hero?'あなた':''}</span>${cards(p.hand)}</div>`).join('')}<div class="reviewline">結果と判断は別です。相手の実際の手札だけでなく、同じアクションを取る別の手も考えましょう。</div>${s.review.map(r=>`<div class="reviewline">${r}</div>`).join('')}<button class="primary" id="newhand">次のハンド</button>`:`<span class="eyebrow">YOUR ACTION</span><h2 class="question">${cost?`${money(cost)}を払って続ける？`:'チェックか、ベットか。'}</h2><div class="actions"><button data-act="fold">フォールド</button><button class="primary" data-act="call">${cost?'コール '+money(cost):'チェック'}</button></div><button data-act="raise" style="width:100%;margin-top:12px" ${hero.stack<=cost?'disabled':''}>${s.street===0?(s.current===1?'レイズ（合計2.5BB）':'リレイズ（原則3倍）'):s.current?'レイズ（原則2倍）':'ベット（約1/2ポット）'}</button>${s.mode==='learn'?`<details><summary>相手のレンジを考える</summary><p>直前の相手のアクションに残るのは？</p><div class="row"><button data-think="強い手に集中">強い手に集中</button><button data-think="中くらいの手も残る">中くらいも残る</button><button data-think="ブラフも残る">ブラフも残る</button></div><p id="thought" class="notice">予想を振り返りに残せます。自由対戦の読みは自動採点しません。</p></details><details><summary>相手から見た自分を考える</summary><p>自分の手札が見えない相手は、あなたの履歴から何を想定するでしょう？</p><button id="mirror-note">この視点を振り返りに残す</button></details><button id="playhint">ヒントを見る ${s.hint}/3</button>${s.hint?`<div class="hint">${['位置とそこまでの参加人数を確認しましょう。','チェック・コールにも強い手は残ります。ひとつの手に決めつけないで。','自分の実際の手札と、相手から見た自分のレンジは分けて考えましょう。'][s.hint-1]}</div>`:''}`:''}` }<p class="notice">模擬対戦はアンティなし・BB固定。通常のオープンと初回応答は最新版の基準を使い、SBの特殊な参加・追加リレイズ・ポストフロップは本アプリの簡易戦略です。GTO評価ではありません。</p></section></div>`);document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{if(s.done)return;s.lastFeedback=assessDecision(b.dataset.act);s.review.push(s.lastFeedback);act(s.players.indexOf(hero),b.dataset.act);runBots();renderPlay()});if($('#newhand'))$('#newhand').onclick=()=>{newHand();renderPlay()};if($('#playhint'))$('#playhint').onclick=()=>{s.hint=Math.min(3,s.hint+1);renderPlay()};document.querySelectorAll('[data-think]').forEach(b=>b.onclick=()=>{s.review.push(`${['プリフロップ','フロップ','ターン','リバー'][s.street]}の予想：${b.dataset.think}`);$('#thought').textContent='予想を記録しました。ハンド終了後に見直せます。'});if($('#mirror-note'))$('#mirror-note').onclick=()=>{s.review.push('相手から見た自分：実際の手札を隠して、同じアクションを取れる手を確認。');$('#mirror-note').textContent='振り返りに記録しました'};}
+function playRangeGuide(s){
+  const hero=s.players.find(p=>p.hero),last=[...(s.events||[])].reverse().find(e=>e.pos!==hero.pos);
+  if(!last)return 'まだ相手のアクションが少ないので、位置から参加しそうな手を広く考えます。';
+  if(s.street===0&&last.action==='raise')return last.pos+'がレイズ。'+last.pos+'の位置から参加できる手のうち、弱すぎる手は減り、表の参加範囲が残ります。';
+  if(s.street===0&&last.action==='call')return last.pos+'がコール。最強クラスはリレイズに回ることがあるため、中くらいのペアや同じマークのつながった手も残ります。';
+  if(last.action==='raise')return last.pos+'がベット／レイズ。強い完成ハンドに加え、あと1枚で強くなる手や一部のブラフが残ります。';
+  if(last.action==='call')return last.pos+'がコール。完全に弱い手は減り、ペア、あと1枚で強くなる手、一部の強い手が残ります。';
+  return last.pos+'がチェック。弱い手だけとは限りません。コールを狙う強い手も少し残します。';
+}
+function renderPlay(){if(!session)newHand();const s=session,hero=s.players.find(p=>p.hero),cost=Math.min(hero.stack,Math.max(0,s.current-hero.bet));shell(`<div class="heading"><div><div class="eyebrow">PRACTICE TABLE</div><h1>一手ずつ、考える。</h1><p>${s.players.length}人卓 · ${s.mode==='learn'?'ヒント付き学習':'実戦モード'} · ローカル対戦</p></div><div class="row"><span class="pill">${['プリフロップ','フロップ','ターン','リバー'][s.street]}</span><button id="play-bible">ヨコサワ表を見る</button></div></div><div class="workspace"><section class="panel"><div class="row between"><span>ポット <b>${money(s.pot)}</b></span><span>持ち点 ${money(hero.stack)}</span></div>${table({hero:hero.pos,board:s.board,hand:hero.hand,positions:s.players.map(p=>p.pos),active:s.players.filter(p=>!p.fold).map(p=>p.pos)},'ポット '+money(s.pot))}<div class="row">${s.players.map(p=>`<span class="pill">${p.pos}${p.hero?' / YOU':''} · ${p.fold?'fold':money(p.stack)}</span>`).join('')}</div><details open><summary>アクション履歴</summary><div class="history">${s.log.map(l=>`<div>${l}</div>`).join('')}</div></details></section><section class="panel">${s.lastFeedback&&!s.done&&s.mode==='learn'?`<div class="reviewline"><b>前の選択の振り返り</b><br>${s.lastFeedback}</div>`:''}${s.done?`<div class="eyebrow">HAND REVIEW</div><h2>${s.result}</h2><p>あなたの増減：${money(hero.stack-100)}</p>${s.players.filter(p=>!p.fold).map(p=>`<div class="list-item"><span>${p.pos} ${p.hero?'あなた':''}</span>${cards(p.hand)}</div>`).join('')}<div class="reviewline">結果と判断は別です。相手の実際の手札だけでなく、同じアクションを取る別の手も考えましょう。</div>${s.review.map(r=>`<div class="reviewline">${r}</div>`).join('')}<button class="primary" id="newhand">次のハンド</button>`:`<span class="eyebrow">YOUR ACTION</span><div class="play-range-guide"><b>今、考える相手のレンジ</b><p>${playRangeGuide(s)}</p><small>相手の手札は1つに決めず、今の行動を取りそうな候補をまとめて考えます。</small></div><h2 class="question">${cost?`${money(cost)}を払って続ける？`:'チェックか、ベットか。'}</h2><div class="actions"><button data-act="fold">フォールド</button><button class="primary" data-act="call">${cost?'コール '+money(cost):'チェック'}</button></div><button data-act="raise" style="width:100%;margin-top:12px" ${hero.stack<=cost?'disabled':''}>${s.street===0?(s.current===1?'レイズ（合計2.5BB）':'リレイズ（原則3倍）'):s.current?'レイズ（原則2倍）':'ベット（約1/2ポット）'}</button>${s.mode==='learn'?`<details><summary>相手のレンジを考える</summary><p>直前の相手のアクションに残るのは？</p><div class="row"><button data-think="強い手に集中">強い手に集中</button><button data-think="中くらいの手も残る">中くらいも残る</button><button data-think="ブラフも残る">ブラフも残る</button></div><p id="thought" class="notice">予想を振り返りに残せます。自由対戦の読みは自動採点しません。</p></details><details><summary>相手から見た自分を考える</summary><p>自分の手札が見えない相手は、あなたの履歴から何を想定するでしょう？</p><button id="mirror-note">この視点を振り返りに残す</button></details><button id="playhint">ヒントを見る ${s.hint}/3</button>${s.hint?`<div class="hint">${['位置とそこまでの参加人数を確認しましょう。','チェック・コールにも強い手は残ります。ひとつの手に決めつけないで。','自分の実際の手札と、相手から見た自分のレンジは分けて考えましょう。'][s.hint-1]}</div>`:''}`:''}` }<p class="notice">模擬対戦はアンティなし・BB固定。通常のオープンと初回応答は最新版の基準を使い、SBの特殊な参加・追加リレイズ・ポストフロップは本アプリの簡易戦略です。GTO評価ではありません。</p></section></div>`);$('#play-bible').onclick=()=>openChartOverlay(false,handNotation(hero.hand));document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{if(s.done)return;s.lastFeedback=assessDecision(b.dataset.act);s.review.push(s.lastFeedback);act(s.players.indexOf(hero),b.dataset.act);runBots();renderPlay()});if($('#newhand'))$('#newhand').onclick=()=>{newHand();renderPlay()};if($('#playhint'))$('#playhint').onclick=()=>{s.hint=Math.min(3,s.hint+1);renderPlay()};document.querySelectorAll('[data-think]').forEach(b=>b.onclick=()=>{s.review.push(`${['プリフロップ','フロップ','ターン','リバー'][s.street]}の予想：${b.dataset.think}`);$('#thought').textContent='予想を記録しました。ハンド終了後に見直せます。'});if($('#mirror-note'))$('#mirror-note').onclick=()=>{s.review.push('相手から見た自分：実際の手札を隠して、同じアクションを取れる手を確認。');$('#mirror-note').textContent='振り返りに記録しました'};}
 function boardChecklist(board){const ns=board.slice(0,3).map(c=>14-ranks.indexOf(c[0])).sort((a,b)=>b-a),suits=new Set(board.slice(0,3).map(c=>c[1])).size;return `<details><summary>ボードを見る3つの手がかり</summary><div class="reviewline"><b>① 高さ</b>　${ns[0]>=12?'高いカードあり。強いA・絵札・オーバーペアはどちらに残る？':'中低カード中心。中小ペアやつながった手はどちらに残る？'}</div><div class="reviewline"><b>② つながり</b>　${new Set(ns).size<3?'同じ数字あり。トリップスやフルハウスの候補も確認。':ns[0]-ns[2]<=5?'近い数字あり。ストレート・2ペアになる候補を双方で探そう。':'数字が離れ気味。トップペアとセットの分布から確認。'}</div><div class="reviewline"><b>③ マーク</b>　${suits===3?'3種類。フロップ時点で通常のフラッシュドローはない。':suits===2?'2枚が同じマーク。そのマークを手札に2枚持つドローを確認。':'3枚が同じマーク。完成フラッシュと、1枚持ちのドローを区別。'}</div><small>見た目だけで有利な側を決めず、参加レンジに戻って確かめよう。</small></details>`}
 function explainSteps(q){const steps=q.steps|| (q.id==='river'?['相手は大きなベットを3回続けた。','強い完成ハンドと、ブラフに回る未完成ドローを分ける。','全ドローが打つとはせず、一部だけを候補に残す。']:q.id==='loose'?['参加が広くコールが多い、という観察を使う。','標準相手なら降りる弱いペア・ドローも残す。','コールの傾向からベットのブラフ頻度までは決めない。']:q.id==='multi'?['BBのベット範囲とBTNのコール範囲を別々に置く。','両者に勝てる手・改善する手を考える。','自分がレイズした場合は、両者の応答も考慮する。']:q.id==='mirror'?['相手に見えるのは、あなたの位置・ベット・ボードだけ。','同じ小額ベットを、強い手でも弱い手でも使う設定。','実際の手札ではなく、そのアクションを取る範囲を残す。']:q.range==='call'?['BBのプリフロップコール範囲を出発点にする。','小額ベットにも降りやすい役なしの重みを下げる。','ペア・一部のドロー・スロープレイした強い手を残す。']:q.board.length?['BTNのレイズ範囲と、BBのコール範囲を別々に置く。','ボードに当たるペア・強い役・ドローを双方で探す。','レンジ全体の強さと、最強クラスの手の多さを分けて考える。']:['位置と、後ろに残る人数を確認する。','参加額に加え、レイズかコールかを確認する。','強い手だけに絞らず、その位置で使う中くらいの手も検討する。']);return `<div class="explain"><h3>判断を組み立てる3ステップ</h3>${steps.map((t,i)=>`<div class="reviewline"><b>${i+1}</b>　${t}</div>`).join('')}</div>`}
 function estimatedEquity(trials=160){const s=session,hero=s.players.find(p=>p.hero),opponents=s.players.filter(p=>!p.hero&&!p.fold),known=new Set([...hero.hand,...s.board]);let win=0;for(let n=0;n<trials;n++){let pool=shuffle(deck().filter(c=>!known.has(c))),hands=[];for(const p of opponents){let candidate;for(let k=0;k<60;k++){candidate=[pool[0],pool[1]];const vals=candidate.map(c=>ranks.indexOf(c[0])),hi=Math.min(...vals),lo=Math.max(...vals),h=ranks[hi]+ranks[lo]+(hi===lo?'':candidate[0][1]===candidate[1][1]?'s':'o'),type=p.pos==='BB'?'bb':['BTN','CO','SB'].includes(p.pos)?'btn':'utg',prior=rangeWeight(h,type),last=(s.events||[]).filter(e=>e.pos===p.pos&&e.street===s.street).at(-1),str=strength({hand:candidate});let weight=prior;if(last?.action==='raise')weight*=str>.6?.9:.2;else if(last?.action==='call'&&last.cost>0&&s.street>0)weight*=str>.35?1:.3;if(Math.random()<weight)break;shuffle(pool)}hands.push(candidate);pool=pool.filter(c=>!candidate.includes(c))}const board=[...s.board,...pool.slice(0,5-s.board.length)],mine=evaluate([...hero.hand,...board]),scores=hands.map(h=>evaluate([...h,...board])),best=Math.max(mine,...scores);if(mine===best)win+=1/(1+scores.filter(v=>v===mine).length)}return win/trials;}
@@ -255,3 +335,4 @@ function assessDecision(action){const s=session,h=s.players.find(p=>p.hero),cost
 render();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 if(document.modelContext?.registerTool){try{Promise.resolve(document.modelContext.registerTool({name:'start_range_practice',description:'指定レベルのレンジ練習を開く。回答や採点は行わない。',inputSchema:{type:'object',properties:{level:{type:'integer',minimum:1,maximum:5}},required:['level'],additionalProperties:false},annotations:{readOnlyHint:false},execute(input){if(!input||!Number.isInteger(input.level)||input.level<1||input.level>5)throw Error('level must be 1–5');settings.level=input.level;persist();navigate('practice');return {level:settings.level,question:current().ask}}})).catch(()=>{})}catch{}}
+

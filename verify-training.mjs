@@ -117,10 +117,17 @@ for(const q of questions){
   assert(q.foundation,q.id+' foundation');
   startDrill([q.id],'分類の確認');
   assert(root.innerHTML.includes(learningKinds[q.learningKind].title));
+  assert(root.innerHTML.includes('この問題で見るレンジ'));
+  assert(root.innerHTML.includes('レンジ＝その人が持っていそうな手札の候補全部'));
   assert(!root.innerHTML.includes(q.why),'do not reveal explanation before answering');
   selected=q.answer;submitAnswer();
   assert(root.innerHTML.includes('覚えておく基準'));
   assert(root.innerHTML.includes(q.foundation));
+  assert(root.innerHTML.includes('レンジはどう変わった？'));
+  assert(root.innerHTML.includes('① 最初の候補'));
+  assert(root.innerHTML.includes('② 行動のあと'));
+  assert(root.innerHTML.includes('③ なぜそう言える？'));
+  assert(root.innerHTML.includes('④ 今回の判断'));
 }
 assert.equal(questions.find(q=>q.id==='hero_btn').learningKind,'memory');
 assert.equal(questions.find(q=>q.id==='call').learningKind,'read');
@@ -132,7 +139,10 @@ for(let n=4;n<=8;n++){
   assert.equal(seatLayout('BB',positions(n)).find(p=>p.pos==='BB').slot,0);
   assert(root.innerHTML.includes('seat seat-0 hero'));
   assert(root.innerHTML.includes('BB あなたの席'));
+  assert(root.innerHTML.includes('id="play-bible"'));
+  if(!session.done)assert(root.innerHTML.includes('今、考える相手のレンジ'));
 }
+assert(playRangeGuide({players:[{pos:'BTN',hero:true}],events:[]}).includes('位置から参加'));
 `);
 console.log('PASS: hero-front rotation at every seat, 4–8 player rendering, teaching classification, explanation separation, chart provenance');
 
@@ -197,3 +207,4 @@ assert(root.innerHTML.includes('10 / 10'));assert.equal(flashStats.sessions,1);
 `);
 harness(flashHarness.storage.value).run("assert.equal(flashStats.attempts,10);assert.equal(flashStats.correct,10);assert.equal(flashStats.sessions,1);assert.equal(records.length,0)");
 console.log('PASS: ten unique chart hands, answer feedback, completed session, persistent flash statistics');
+
