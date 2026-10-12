@@ -25,6 +25,7 @@ jobs:
         uses: actions/checkout@v6
       - name: Verify training and simulation
         run: |
+          node verify-scenarios.mjs
           node verify-training.mjs
           node verify.mjs
       - name: Configure Pages
